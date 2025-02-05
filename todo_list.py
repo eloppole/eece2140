@@ -73,7 +73,7 @@ def first():
         else:
             print("Invalid choice. Please enter a number between 1 and 5.\n")
 #==============================================================================
-# Main function to invoke the two functions
+# Main function to invoke the function
 def main():
     print("Executing Question 1:")
     first() # Call the function for Question 1
