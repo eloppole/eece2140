@@ -1,0 +1,737 @@
+# Import necessary libraries for GUI and symbolic math
+import tkinter as tk
+import cmath
+from tkinter import ttk
+import sympy as sp
+from sympy import symbols, Function, Eq, dsolve, Derivative, simplify, exp, sin, cos
+
+# Define symbolic variable and function used in solving differential equations
+x = symbols('x')
+y = Function('y')
+
+# Main application class for the differential equation solver
+class DiffEqApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Differential Equation Solver")  # Title of the GUI window
+        self.geometry("900x700")  # Set size of the window
+        self.frames = {}  # Dictionary to hold different frames (pages)
+        self.create_frames()  # Initialize all frames
+        self.show_frame("StartPage")  # Start with the main menu
+
+    # Create and initialize all frame pages
+    def create_frames(self):
+        for F in (StartPage, FirstOrderPage, SecondOrderPage,
+                  SeparationPage, IntegratingFactorPage,
+                  BernoulliPage, ExactPage, FirstLaplacePage,
+                  SecondHomogeneousPage, SecondNonhomogeneousPage,
+                  SecondLaplacePage):
+            frame = F(self)  # Create instance of the frame
+            self.frames[F.__name__] = frame  # Store it by name in dictionary
+            frame.grid(row=0, column=0, sticky="nsew")  # Place the frame in the grid
+
+    # Show the selected frame on the screen
+    def show_frame(self, page_name):
+        frame = self.frames[page_name]
+        frame.tkraise()  # Bring the selected frame to the front
+
+# Start page where user chooses the equation type
+class StartPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        ttk.Label(self, text="Select Order of Differential Equation", font=("Arial", 18)).pack(pady=20)
+        ttk.Button(self, text="First Order", command=lambda: master.show_frame("FirstOrderPage")).pack(pady=10)
+        ttk.Button(self, text="Second Order", command=lambda: master.show_frame("SecondOrderPage")).pack(pady=10)
+
+# Page to select first-order methods
+class FirstOrderPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        ttk.Label(self, text="Select First Order Method", font=("Arial", 18)).pack(pady=20)
+        # Buttons for each first-order method
+        ttk.Button(self, text="Separation of Variables", command=lambda: master.show_frame("SeparationPage")).pack(pady=5)
+        ttk.Button(self, text="Integrating Factor", command=lambda: master.show_frame("IntegratingFactorPage")).pack(pady=5)
+        ttk.Button(self, text="Bernoulli", command=lambda: master.show_frame("BernoulliPage")).pack(pady=5)
+        ttk.Button(self, text="Exact", command=lambda: master.show_frame("ExactPage")).pack(pady=5)
+        ttk.Button(self, text="Laplace", command=lambda: master.show_frame("FirstLaplacePage")).pack(pady=5)
+
+# Page to select second-order methods
+class SecondOrderPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        ttk.Label(self, text="Select Second Order Method", font=("Arial", 18)).pack(pady=20)
+        # Buttons for each second-order method
+        ttk.Button(self, text="Homogeneous", command=lambda: master.show_frame("SecondHomogeneousPage")).pack(pady=5)
+        ttk.Button(self, text="Nonhomogeneous", command=lambda: master.show_frame("SecondNonhomogeneousPage")).pack(pady=5)
+        ttk.Button(self, text="Laplace", command=lambda: master.show_frame("SecondLaplacePage")).pack(pady=5)
+
+# Page for solving differential equations using separation of variables
+class SeparationPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        ttk.Label(self, text="Separation of Variables", font=("Arial", 18)).pack(pady=10)
+
+        # Entry boxes for user to input f(x) and g(y)
+        self.fx_entry = self.create_labeled_entry("f(x):")
+        self.gy_entry = self.create_labeled_entry("g(y):")
+
+        # Buttons to solve the equation or show help
+        ttk.Button(self, text="Solve", command=self.solve).pack(pady=5)
+        ttk.Button(self, text="Need Help?", command=self.show_help).pack(pady=5)
+
+        # Output boxes for solution and tutor help
+        self.output = self.create_output_box()
+        self.tutor_box = self.create_output_box("Tutor Help")
+
+    # Helper to create labeled entry field
+    def create_labeled_entry(self, label_text):
+        frame = ttk.Frame(self)
+        frame.pack(pady=5)
+        ttk.Label(frame, text=label_text).pack(side="left")
+        entry = ttk.Entry(frame, width=30)
+        entry.pack(side="left")
+        return entry
+
+    # Helper to create a text box for displaying output
+    def create_output_box(self, label="Output"):
+        ttk.Label(self, text=label, font=("Arial", 12)).pack(pady=5)
+        text = tk.Text(self, height=6, width=100)
+        text.pack(pady=5)
+        return text
+
+    # Function to solve the differential equation
+    def solve(self):
+        try:
+            # Evaluate f(x) and g(y) from user input
+            f_expr = eval(self.fx_entry.get(), {"x": x, "exp": exp, "sin": sin, "cos": cos})
+            g_expr = eval(self.gy_entry.get(), {"y": y(x), "exp": exp, "sin": sin, "cos": cos})
+            # Build differential equation in the form dy/dx = f(x)*g(y)
+            eq = Eq(Derivative(y(x), x), f_expr * g_expr)
+            # Solve the equation symbolically
+            sol = dsolve(eq, y(x))
+            # Display the solution
+            self.output.delete("1.0", tk.END)
+            self.output.insert(tk.END, f"Solution: {sol}\n")
+        except Exception as e:
+            # Display any error encountered during solving
+            self.output.insert(tk.END, f"Error: {str(e)}\n")
+
+    # Display tutorial help text
+    def show_help(self):
+        self.tutor_box.delete("1.0", tk.END)
+        help_text = (
+            "In Separation of Variables, we aim to rewrite the equation in the form\n"
+            "dy/dx = f(x) * g(y), then integrate both sides: ∫1/g(y) dy = ∫f(x) dx.\n"
+            "Make sure your expressions are compatible with this format.\n"
+            "Examples: f(x) = x, g(y) = y → dy/dx = x*y"
+        )
+        self.tutor_box.insert(tk.END, help_text)
+        
+# Class for the GUI page that solves first-order linear differential equations using the integrating factor method
+class IntegratingFactorPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        
+        # Title label
+        ttk.Label(self, text="Integrating Factor Method", font=("Arial", 18)).pack(pady=10)
+
+        # Input entries for P(x) and Q(x)
+        self.px_entry = self.create_labeled_entry("P(x):")
+        self.qx_entry = self.create_labeled_entry("Q(x):")
+
+        # Buttons for solving and help
+        ttk.Button(self, text="Solve", command=self.solve).pack(pady=5)
+        ttk.Button(self, text="Get Help", command=self.show_help).pack(pady=5)
+
+        # Output display boxes
+        self.output = self.create_output_box()
+        self.help_output = self.create_help_box()
+
+    # Helper to create an entry field with a label
+    def create_labeled_entry(self, label_text):
+        frame = ttk.Frame(self)
+        frame.pack(pady=5)
+        ttk.Label(frame, text=label_text).pack(side="left")
+        entry = ttk.Entry(frame, width=30)
+        entry.pack(side="left")
+        return entry
+
+    # Output box for the result
+    def create_output_box(self):
+        text = tk.Text(self, height=8, width=80, wrap="word")
+        text.pack(pady=10)
+        return text
+
+    # Help box for explanation of the method
+    def create_help_box(self):
+        text = tk.Text(self, height=6, width=80, wrap="word", bg="#f0f0f0", fg="#333")
+        text.pack(pady=5)
+        return text
+
+    # Method to solve the differential equation
+    def solve(self):
+        self.output.delete("1.0", tk.END)
+        self.help_output.delete("1.0", tk.END)
+
+        x = sp.symbols('x')
+        y = sp.Function('y')(x)
+
+        try:
+            # Get and parse user inputs
+            P = sp.sympify(self.px_entry.get())
+            Q = sp.sympify(self.qx_entry.get())
+
+            # Compute the integrating factor μ(x) = e^(∫P(x) dx)
+            integrating_factor = sp.exp(sp.integrate(P, x))
+
+            # Multiply both sides of the equation by the integrating factor
+            lhs = sp.simplify(integrating_factor * y.diff(x))
+            rhs = sp.simplify(integrating_factor * Q)
+
+            # Solve for y(x)
+            y_solution = sp.simplify(sp.integrate(rhs, x) / integrating_factor)
+
+            # Display result (general solution includes + C/integrating_factor)
+            result = f"The solution to the equation is:\ny(x) = {y_solution} + C/{integrating_factor}"
+            self.output.insert(tk.END, result)
+
+        except Exception as e:
+            self.output.insert(tk.END, f"Error: {str(e)}")
+
+    # Help message explaining the method
+    def show_help(self):
+        help_text = (
+            "This method solves equations of the form:\n"
+            "y' + P(x)y = Q(x)\n\n"
+            "Steps:\n"
+            "1. Find the integrating factor μ(x) = e^(∫P(x)dx)\n"
+            "2. Multiply both sides of the equation by μ(x)\n"
+            "3. The left-hand side becomes the derivative of μ(x)y\n"
+            "4. Integrate both sides to find y(x)\n"
+            "5. Add constant of integration, C"
+        )
+        self.help_output.delete("1.0", tk.END)
+        self.help_output.insert(tk.END, help_text)
+
+
+# Class for the GUI page that solves Bernoulli differential equations
+class BernoulliPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+        # Title label
+        ttk.Label(self, text="Bernoulli Method", font=("Arial", 18)).pack(pady=10)
+
+        # Input entries for P(x), Q(x), and exponent n
+        self.px_entry = self.create_labeled_entry("P(x):")
+        self.qx_entry = self.create_labeled_entry("Q(x):")
+        self.n_entry = self.create_labeled_entry("n:")
+
+        # Buttons for solving and help
+        ttk.Button(self, text="Solve", command=self.solve).pack(pady=5)
+        ttk.Button(self, text="Get Help", command=self.show_help).pack(pady=5)
+
+        # Output and help display areas
+        self.output = self.create_output_box()
+        self.help_output = self.create_help_box()
+
+    # Create labeled input entries
+    def create_labeled_entry(self, label_text):
+        frame = ttk.Frame(self)
+        frame.pack(pady=5)
+        ttk.Label(frame, text=label_text).pack(side="left")
+        entry = ttk.Entry(frame, width=30)
+        entry.pack(side="left")
+        return entry
+
+    # Output box for results
+    def create_output_box(self):
+        text = tk.Text(self, height=10, width=80, wrap="word")
+        text.pack(pady=10)
+        return text
+
+    # Help box with explanation
+    def create_help_box(self):
+        text = tk.Text(self, height=6, width=80, wrap="word", bg="#f0f0f0", fg="#333")
+        text.pack(pady=5)
+        return text
+
+    # Solve the Bernoulli differential equation
+    def solve(self):
+        self.output.delete("1.0", tk.END)
+        self.help_output.delete("1.0", tk.END)
+
+        x = sp.symbols('x')
+        y = sp.Function('y')(x)
+
+        try:
+            # Get inputs and parse them
+            P = sp.sympify(self.px_entry.get())
+            Q = sp.sympify(self.qx_entry.get())
+            n = float(self.n_entry.get())
+
+            # Check if it's a true Bernoulli equation
+            if n == 1:
+                self.output.insert(tk.END, "This is a linear differential equation, not Bernoulli. Use another method.")
+                return
+
+            # Substitute v = y^(1-n) to linearize
+            v = sp.Function('v')(x)
+
+            # Integrating factor for the linear v-equation
+            integrating_factor = sp.exp(sp.integrate(P * (1 - n), x))
+
+            # Construct new linear equation in v
+            lhs = sp.simplify(integrating_factor * v.diff(x))
+            rhs = sp.simplify(integrating_factor * Q * (1 - n))
+
+            # Solve for v(x)
+            v_solution = sp.simplify(sp.integrate(rhs, x) / integrating_factor)
+            C = sp.symbols('C')
+            v_solution += C / integrating_factor
+
+            # Back-substitute to get y(x)
+            y_solution = sp.simplify(v_solution**(1 / (1 - n)))
+
+            result = f"The solution to the Bernoulli equation is:\ny(x) = {y_solution}"
+            self.output.insert(tk.END, result)
+
+        except Exception as e:
+            self.output.insert(tk.END, f"An error occurred while solving: {str(e)}")
+
+    # Help text describing the Bernoulli method
+    def show_help(self):
+        help_text = (
+            "This method solves equations of the form:\n"
+            "y' + P(x)y = Q(x)y^n\n\n"
+            "Steps:\n"
+            "1. Confirm n ≠ 1 (otherwise it's linear)\n"
+            "2. Let v = y^(1-n), rewrite in terms of v\n"
+            "3. This makes a linear DE in v: v' + P(x)(1-n)v = Q(x)(1-n)\n"
+            "4. Solve using integrating factor: μ(x) = e^(∫P(x)(1-n) dx)\n"
+            "5. Integrate to find v(x), then back-substitute to get y(x)"
+        )
+        self.help_output.delete("1.0", tk.END)
+        self.help_output.insert(tk.END, help_text)
+        
+# Class for solving exact first-order differential equations
+class ExactPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+        # Page title
+        ttk.Label(self, text="Exact Method", font=("Arial", 18)).pack(pady=10)
+
+        # Input fields for M(x, y) and N(x, y)
+        self.m_entry = self.create_labeled_entry("M(x, y):")
+        self.n_entry = self.create_labeled_entry("N(x, y):")
+
+        # Buttons to solve and get help
+        ttk.Button(self, text="Solve", command=self.solve).pack(pady=5)
+        ttk.Button(self, text="Get Help", command=self.show_help).pack(pady=5)
+
+        # Text widgets to display output and help
+        self.output = self.create_output_box()
+        self.help_output = self.create_help_box()
+
+    # Creates a labeled entry box
+    def create_labeled_entry(self, label_text):
+        frame = ttk.Frame(self)
+        frame.pack(pady=5)
+        ttk.Label(frame, text=label_text).pack(side="left")
+        entry = ttk.Entry(frame, width=40)
+        entry.pack(side="left")
+        return entry
+
+    # Output display box for results
+    def create_output_box(self):
+        text = tk.Text(self, height=12, width=85, wrap="word")
+        text.pack(pady=10)
+        return text
+
+    # Output display box for help/instructions
+    def create_help_box(self):
+        text = tk.Text(self, height=6, width=85, wrap="word", bg="#f0f0f0", fg="#333")
+        text.pack(pady=5)
+        return text
+
+    # Main solve function for exact equations
+    def solve(self):
+        self.output.delete("1.0", tk.END)
+        self.help_output.delete("1.0", tk.END)
+
+        x, y = sp.symbols('x y')
+
+        try:
+            # Convert user input to symbolic expressions
+            M = sp.sympify(self.m_entry.get())
+            N = sp.sympify(self.n_entry.get())
+
+            # Compute partial derivatives
+            dMdy = sp.diff(M, y)
+            dNdx = sp.diff(N, x)
+
+            self.output.insert(tk.END, f"∂M/∂y = {dMdy}\n")
+            self.output.insert(tk.END, f"∂N/∂x = {dNdx}\n")
+
+            # Check exactness condition
+            if dMdy != dNdx:
+                raise ValueError("The equation is NOT exact because ∂M/∂y ≠ ∂N/∂x.")
+
+            self.output.insert(tk.END, "\nThe equation is exact.\n")
+
+            # Integrate M w.r.t. x to get part of the potential function
+            u_x = sp.integrate(M, x)
+            self.output.insert(tk.END, f"\n∫M dx = {u_x}\n")
+
+            # Find g'(y) by subtracting ∂/∂y(∫M dx) from N
+            g_prime_y = sp.simplify(N - sp.diff(u_x, y))
+            self.output.insert(tk.END, f"g'(y) = N - ∂/∂y ∫M dx = {g_prime_y}\n")
+
+            # Integrate g'(y) to find g(y)
+            g_y = sp.integrate(g_prime_y, y)
+            self.output.insert(tk.END, f"∫g'(y) dy = {g_y}\n")
+
+            # Construct final potential function (solution)
+            solution = u_x + g_y
+            self.output.insert(tk.END, f"\nThe general solution is:\nC = {solution}")
+
+            # Also integrate N w.r.t. y to cross-check terms
+            u_y = sp.integrate(N, y)
+            self.output.insert(tk.END, f"\n∫N dy = {u_y}\n")
+
+            # Combine and simplify terms from both integrals
+            ux_terms = set(sp.Add.make_args(u_x))
+            uy_terms = set(sp.Add.make_args(u_y))
+            u_terms = ux_terms.union(uy_terms)
+            u_solution = sp.simplify(sum(u_terms))
+
+            self.output.insert(tk.END, f"\nCombined potential function: {u_solution} + C")
+
+        except Exception as e:
+            self.output.insert(tk.END, f"\nAn error occurred while solving: {e}")
+
+    # Display help instructions
+    def show_help(self):
+        help_text = (
+            "This method solves equations of the form:\n"
+            "M(x, y)dx + N(x, y)dy = 0\n\n"
+            "Steps:\n"
+            "1. Check if ∂M/∂y = ∂N/∂x (exactness condition).\n"
+            "2. If exact, integrate M with respect to x: ∫M dx.\n"
+            "3. Determine g(y) from N - ∂/∂y(∫M dx).\n"
+            "4. Combine to get potential function F(x, y) = constant."
+        )
+        self.help_output.delete("1.0", tk.END)
+        self.help_output.insert(tk.END, help_text)
+
+
+# Class for solving second-order ODEs using Laplace transforms
+class FirstLaplacePage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+        # Page title
+        ttk.Label(self, text="Second Order Laplace Solver", font=("Arial", 18)).pack(pady=10)
+
+        # Dictionary of labeled entry fields
+        self.entries = {}
+        for label in ["a (y'')", "b (y')", "c (y)", "f(t)", "y(0)", "y'(0)"]:
+            self.create_labeled_entry(label)
+
+        # Solve button
+        ttk.Button(self, text="Solve with Laplace", command=self.solve_laplace).pack(pady=10)
+
+        # Output text box
+        self.output = tk.Text(self, height=15, width=80, wrap="word")
+        self.output.pack(pady=10)
+
+    # Create labeled entry and store in dictionary
+    def create_labeled_entry(self, label):
+        frame = ttk.Frame(self)
+        frame.pack(pady=3)
+        ttk.Label(frame, text=label + ":").pack(side="left")
+        entry = ttk.Entry(frame, width=30)
+        entry.pack(side="left")
+        self.entries[label] = entry
+
+    # Call external Laplace solver function with input values
+    def solve_laplace(self):
+        try:
+            a = int(self.entries["a (y'')"].get())
+            b = int(self.entries["b (y')"].get())
+            c = int(self.entries["c (y)"].get())
+            f = self.entries["f(t)"].get()
+            y0 = float(self.entries["y(0)"].get())
+            yp0 = float(self.entries["y'(0)"].get())
+
+            # This function must be defined elsewhere
+            result = LaplaceSolver.solve_with_laplace_gui(a, b, c, f, y0, yp0)
+            self.output.delete("1.0", tk.END)
+            self.output.insert(tk.END, result)
+        except ValueError:
+            self.output.insert(tk.END, "ERROR: Please ensure all fields are filled with valid numbers.")
+
+
+# Class for solving second-order homogeneous ODEs using characteristic equations
+class SecondHomogeneousPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+        # Page title
+        ttk.Label(self, text="Homogeneous Second-Order Equation", font=("Arial", 18)).pack(pady=10)
+
+        # Entry fields for coefficients
+        self.a_entry = self.create_labeled_entry("a:")
+        self.b_entry = self.create_labeled_entry("b:")
+        self.c_entry = self.create_labeled_entry("c:")
+
+        # Buttons to solve and get help
+        ttk.Button(self, text="Solve", command=self.solve).pack(pady=5)
+        ttk.Button(self, text="Get Help", command=self.show_help).pack(pady=5)
+
+        # Text widgets to display output and help
+        self.output = self.create_output_box()
+        self.help_output = self.create_help_box()
+
+    # Create labeled entry field
+    def create_labeled_entry(self, label_text):
+        frame = ttk.Frame(self)
+        frame.pack(pady=5)
+        ttk.Label(frame, text=label_text).pack(side="left")
+        entry = ttk.Entry(frame, width=40)
+        entry.pack(side="left")
+        return entry
+
+    # Create main output text widget
+    def create_output_box(self):
+        text = tk.Text(self, height=12, width=85, wrap="word")
+        text.pack(pady=10)
+        return text
+
+    # Create help text widget
+    def create_help_box(self):
+        text = tk.Text(self, height=6, width=85, wrap="word", bg="#f0f0f0", fg="#333")
+        text.pack(pady=5)
+        return text
+
+    # Main solve method using characteristic roots
+    def solve(self):
+        self.output.delete("1.0", tk.END)
+        self.help_output.delete("1.0", tk.END)
+
+        try:
+            # Get coefficients
+            a = int(self.a_entry.get())
+            b = int(self.b_entry.get())
+            c = int(self.c_entry.get())
+
+            if a == 0:
+                self.output.insert(tk.END, "Error: 'a' cannot be zero for a second-order equation.")
+                return
+
+            self.output.insert(tk.END, f"Given coefficients: a = {a}, b = {b}, c = {c}\n")
+
+            # Compute discriminant
+            discriminant = b**2 - 4*a*c
+            self.output.insert(tk.END, f"Discriminant Δ = b² - 4ac = {discriminant}\n")
+
+            # Solve characteristic equation
+            x1 = (-b + cmath.sqrt(discriminant)) / (2*a)
+            x2 = (-b - cmath.sqrt(discriminant)) / (2*a)
+
+            # Clean up complex notation if purely real
+            x1_str = str(x1).replace("+0j", "")
+            x2_str = str(x2).replace("+0j", "")
+
+            self.output.insert(tk.END, f"Roots of the characteristic equation:\n")
+            self.output.insert(tk.END, f"r₁ = {x1_str}\n")
+            self.output.insert(tk.END, f"r₂ = {x2_str}\n")
+
+            # Format solution based on root type
+            if discriminant > 0:
+                form = f"y(x) = C₁e^({x1.real}x) + C₂e^({x2.real}x)"
+            elif discriminant == 0:
+                form = f"y(x) = (C₁ + C₂x)e^({x1.real}x)"
+            else:
+                real = round(x1.real, 4)
+                imag = round(x1.imag, 4)
+                form = f"y(x) = e^({real}x)(C₁cos({imag}x) + C₂sin({imag}x))"
+
+            self.output.insert(tk.END, f"\nGeneral solution:\n{form}")
+
+        except ValueError:
+            self.output.insert(tk.END, "Invalid input. Please enter numeric values for a, b, and c.")
+        except Exception as e:
+            self.output.insert(tk.END, f"Unexpected error: {e}")
+
+    # Show help for solving second-order ODEs
+    def show_help(self):
+        help_text = (
+            "This method solves second-order homogeneous equations of the form:\n"
+            "a y'' + b y' + c y = 0\n\n"
+            "Steps:\n"
+            "1. Form the characteristic equation: ar² + br + c = 0\n"
+            "2. Compute the discriminant Δ = b² - 4ac\n"
+            "3. Solve for roots:\n"
+            "   - Δ > 0: two real roots → y = C₁e^{r₁x} + C₂e^{r₂x}\n"
+            "   - Δ = 0: repeated root → y = (C₁ + C₂x)e^{rx}\n"
+            "   - Δ < 0: complex roots → y = e^{αx}(C₁cos(βx) + C₂sin(βx))"
+        )
+        self.help_output.delete("1.0", tk.END)
+        self.help_output.insert(tk.END, help_text)
+
+# GUI Page for solving second-order nonhomogeneous differential equations
+class SecondNonhomogeneousPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+        # Title label
+        ttk.Label(self, text="Nonhomogeneous Second-Order Equation", font=("Arial", 18)).pack(pady=10)
+
+        # Input fields for coefficients and forcing function
+        self.a_entry = self.create_labeled_entry("a (y''):")
+        self.b_entry = self.create_labeled_entry("b (y'):")
+        self.c_entry = self.create_labeled_entry("c (y):")
+        self.f_entry = self.create_labeled_entry("f(x) (use exp for e^x):")
+
+        # Solve and help buttons
+        ttk.Button(self, text="Solve", command=self.solve).pack(pady=5)
+        ttk.Button(self, text="Get Help", command=self.show_help).pack(pady=5)
+
+        # Output text boxes
+        self.output = self.create_output_box()
+        self.help_output = self.create_help_box()
+
+    # Creates a labeled entry box for user input
+    def create_labeled_entry(self, label_text):
+        frame = ttk.Frame(self)
+        frame.pack(pady=3)
+        ttk.Label(frame, text=label_text).pack(side="left")
+        entry = ttk.Entry(frame, width=40)
+        entry.pack(side="left")
+        return entry
+
+    # Output box for solution display
+    def create_output_box(self):
+        text = tk.Text(self, height=14, width=85, wrap="word")
+        text.pack(pady=10)
+        return text
+
+    # Help/instruction box
+    def create_help_box(self):
+        text = tk.Text(self, height=6, width=85, wrap="word", bg="#f0f0f0", fg="#333")
+        text.pack(pady=5)
+        return text
+
+    # Handles solving the differential equation
+    def solve(self):
+        # Clear previous outputs
+        self.output.delete("1.0", tk.END)
+        self.help_output.delete("1.0", tk.END)
+
+        x = sp.symbols('x')
+        y = sp.Function('y')(x)
+
+        # Parse user inputs and validate
+        try:
+            a = int(self.a_entry.get())
+            b = int(self.b_entry.get())
+            c = int(self.c_entry.get())
+            f_str = self.f_entry.get().replace("e^", "exp")
+            f_x = sp.sympify(f_str)
+        except ValueError:
+            self.output.insert(tk.END, "Error: Coefficients must be integers.\n")
+            return
+        except sp.SympifyError as e:
+            self.output.insert(tk.END, f"Error parsing f(x): {e}\n")
+            self.output.insert(tk.END, "Use Python syntax like 3*exp(2*x) for exponential terms.\n")
+            return
+
+        # Display the input equation
+        self.output.insert(tk.END, f"Equation: {a}y'' + {b}y' + {c}y = {f_x}\n\n")
+        self.output.insert(tk.END, "Step 1: Solve the full equation symbolically...\n")
+
+        # Construct and solve the differential equation
+        try:
+            equation = sp.Eq(a*y.diff(x,x) + b*y.diff(x) + c*y, f_x)
+
+            # Prefer 'undetermined_coefficients' if possible
+            try:
+                solution = sp.dsolve(equation, y, hint='undetermined_coefficients')
+            except Exception:
+                solution = sp.dsolve(equation, y)
+
+            self.output.insert(tk.END, f"Solution:\ny(x) = {sp.sstr(solution.rhs)}")
+        except Exception as e:
+            self.output.insert(tk.END, f"An unexpected error occurred:\n{e}")
+
+    # Display help text to guide the user
+    def show_help(self):
+        help_text = (
+            "This method solves a second-order nonhomogeneous equation:\n"
+            "a·y'' + b·y' + c·y = f(x)\n\n"
+            "Steps:\n"
+            "1. Input the coefficients a, b, c.\n"
+            "2. Define the forcing function f(x), like 3*exp(2*x) or sin(x).\n"
+            "3. Solve for:\n"
+            "   • Complementary solution y_c (homogeneous part)\n"
+            "   • Particular solution y_p (based on f(x))\n"
+            "4. General solution is y(x) = y_c + y_p"
+        )
+        self.help_output.delete("1.0", tk.END)
+        self.help_output.insert(tk.END, help_text)
+
+
+# GUI Page for solving second-order ODEs using Laplace Transforms
+class SecondLaplacePage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+        # Title label
+        ttk.Label(self, text="Second Order Laplace Solver", font=("Arial", 18)).pack(pady=10)
+
+        # Input fields for coefficients, initial conditions, and forcing function
+        self.entries = {}
+        for label in ["a (y'')", "b (y')", "c (y)", "f(t)", "y(0)", "y'(0)"]:
+            self.create_labeled_entry(label)
+
+        # Solve button
+        ttk.Button(self, text="Solve with Laplace", command=self.solve_laplace).pack(pady=10)
+
+        # Output box
+        self.output = tk.Text(self, height=15, width=80, wrap="word")
+        self.output.pack(pady=10)
+
+    # Create labeled entry boxes for each input
+    def create_labeled_entry(self, label):
+        frame = ttk.Frame(self)
+        frame.pack(pady=3)
+        ttk.Label(frame, text=label + ":").pack(side="left")
+        entry = ttk.Entry(frame, width=30)
+        entry.pack(side="left")
+        self.entries[label] = entry
+
+    # Calls Laplace solver and displays result
+    def solve_laplace(self):
+        try:
+            # Parse inputs
+            a = int(self.entries["a (y'')"].get())
+            b = int(self.entries["b (y')"].get())
+            c = int(self.entries["c (y)"].get())
+            f = self.entries["f(t)"].get()
+            y0 = float(self.entries["y(0)"].get())
+            yp0 = float(self.entries["y'(0)"].get())
+
+            # Solve and display
+            result = LaplaceSolver.solve_with_laplace_gui(a, b, c, f, y0, yp0)
+            self.output.delete("1.0", tk.END)
+            self.output.insert(tk.END, result)
+        except ValueError:
+            self.output.insert(tk.END, "ERROR: Please ensure all fields are filled with valid numbers.")
+
+
+# Main loop entry point
+if __name__ == "__main__":
+    app = DiffEqApp()
+    app.mainloop()

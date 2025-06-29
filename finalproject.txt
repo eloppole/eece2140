@@ -1,0 +1,411 @@
+
+import cmath
+import sympy as sp
+
+class Firstorder:
+    @staticmethod
+    def sep_of_var():
+        print("\nSolving a separable differential equation:")
+        print("Step 1: Recognize the equation is separable and can be expressed as dy/dx = f(x)g(y)")
+        print("Step 2: Rewrite it as (1/g(y)) dy = f(x) dx and integrate both sides.\n")
+        
+        x, y, C = sp.symbols('x y C')
+        y_func = sp.Function('y')(x) # defined variables
+        
+        try:
+            print("Step 3: Input f(x) and g(y).")
+            f_x = sp.sympify(input("Input f(x): "))
+            g_y = sp.sympify(input("Input g(y): "))
+        except (sp.SympifyError, ValueError) as e:
+            print(f"\nError parsing input: {e}")
+            return
+        
+        try:
+            print("Step 4: Compute the integral of 1/g(y) with respect to y.")
+            lhs = sp.integrate(1 / (g_y), y) # separating the variables and functions and integrating y-side (left hand side)
+            print(f"Integral of 1/g(y): {lhs}")
+            
+            print("Step 5: Compute the integral of f(x) with respect to x.")
+            rhs = sp.integrate(f_x, x) # variables and functions are separated and we integrate the x-side (right hand side)
+            print(f"Integral of f(x): {rhs}")
+        except sp.IntegralError:
+            print("\nCould not find symbolic integral for the given inputs")
+            return
+        
+        solution = sp.Eq(lhs.subs(y, y_func), rhs + C) # compile equation
+        
+        # Format as proper equation string
+        solution_str = f"{solution.lhs} = {solution.rhs}" # reformat equation
+        solution_str = solution_str.replace('log', 'ln') # the logarithms are pretty much always going to be with base e
+        
+        print("\nStep 6: Combine results to form the general solution.")
+        print("\nThe solution to the equation is:")
+        print(solution_str)
+
+    @staticmethod
+    def integrating_factor():
+        print("\nSolving using the integrating factor method:")
+        print("Step 1: Recognize the equation is in the form y' + P(x)y = Q(x)")
+        
+        x = sp.symbols('x')
+        y = sp.Function('y')(x)
+        
+        try:
+            print("Step 2: Input P(x) and Q(x).")
+            P = sp.sympify(input("Input P(x): ").replace("e^", "exp"))
+            Q = sp.sympify(input("Input Q(x): ").replace("e^", "exp")) # Replace e^ with exp for compatibility
+        except (sp.SympifyError, ValueError) as e:
+            print(f"\nError parsing input: {e}")
+            return
+        
+        try:
+            print("Step 3: Compute the integrating factor μ(x) = e^(∫P(x)dx).")
+            integrating_factor = sp.exp(sp.integrate(P, x)) # compute integrating factor
+            print(f"Integrating factor μ(x): {integrating_factor}")
+            
+            print("Step 4: Multiply through by μ(x) to simplify the equation.")
+            lhs = sp.simplify(integrating_factor * y.diff(x))
+            rhs = sp.simplify(integrating_factor * Q)
+            
+            print("Step 5: Integrate both sides to solve for y(x).")
+            y_solution = sp.simplify(sp.integrate(rhs, x) / integrating_factor)
+            
+            print("\nThe solution to the equation is:")
+            print(f"y(x) = {y_solution} + C/{integrating_factor}")
+        except Exception as e:
+            print(f"\nAn error occurred during integration or simplification: {e}")
+            
+    @staticmethod
+    def Bernoulli():
+        print("\nSolving a Bernoulli differential equation:")
+        print("Step 1: Recognize the equation is in the form y' + P(x)y = Q(x)y^n.")
+        
+        x = sp.symbols('x')
+        y = sp.Function('y')(x)
+        dydx = sp.symbols('dydx')
+        
+        try:
+            print("Step 2: Input P(x), Q(x), and n.")
+            P = sp.sympify(input("Input P(x): "))
+            Q = sp.sympify(input("Input Q(x): "))
+            n = int(input("What is n?: "))
+            
+            print(f"Inputs received: P(x)={P}, Q(x)={Q}, n={n}.")
+            
+            if n == 1:
+                print("\nThis is a linear differential equation, not Bernoulli. Use another method.")
+                return
+            
+            v = sp.Function('v')(x)
+            
+            print("Step 3: Transform into a linear differential equation by substitution v=y^(1-n).")
+            
+            integrating_factor = sp.exp(sp.integrate(P * (1 - n), x))
+            
+            print("Step 4: Calculate the integrating factor and solve for v(x).")
+            lhs = sp.simplify(integrating_factor * v.diff(x))
+            rhs = sp.simplify(integrating_factor * Q * (1 - n))
+            
+            v_solution = sp.simplify(sp.integrate(rhs, x) / integrating_factor)
+            
+            C = sp.symbols('C')
+            
+            v_solution += C / integrating_factor
+            
+            print("Step 5: Substitute back to find y(x) from v(x).")
+            y_solution = v_solution**(1 / (1 - n))
+            
+            print("\nThe solution to the Bernoulli equation is:")
+            print(f"y(x) = {y_solution}")
+        
+        except Exception as e:
+            print(f"\nAn error occurred while solving: {e}")
+            
+    @staticmethod
+    def Exact():
+        print("\nSolving an Exact differential equation:")
+        print("The equation should be in the form M(x,y)dx + N(x,y)dy = 0")
+        
+        x = sp.symbols('x')
+        y = sp.symbols('y')
+        
+        print("\nStep 1: Input the functions M(x, y) and N(x, y).")
+        M = sp.sympify(input("Input M(x,y): "))
+        N = sp.sympify(input("Input N(x,y): "))
+        
+        print("\nStep2: Prove the equation is exact")
+        print("To check exactness, compute:")
+        
+        # compute the partial derivatives
+        dMdy = sp.diff(M, y)
+        dNdx = sp.diff(N,x)
+        
+        print("Partial derivative of M with respect to y (∂M/∂y):",dMdy)
+        print("Partial derivative of N with respect to x (∂N/∂x):",dNdx)
+        
+        try:
+            # check to see if partial derivatives are equal
+            if dMdy != dNdx :
+                raise ValueError("The equation is NOT exact because ∂M/∂y ≠ ∂N/∂x.")
+            
+            print("\nStep 3: Find the solution to the exact equation by finding the potential function")
+            # Integrate M with respect to x
+            u_x = sp.integrate(M, x)
+            print(f"∫M dx = {u_x}")
+            u_y = sp.integrate(N,y)
+            print(f"∫N dy = {u_y}")
+            
+            print("Match the Terms")
+            ux_terms = set(sp.Add.make_args(u_x))
+            uy_terms = set(sp.Add.make_args(u_y))
+            
+            u_terms = ux_terms.union(uy_terms)
+            
+            u_solution = sp.simplify(sum(u_terms))
+            
+            print(f"The solution is: {u_solution} + C ")
+            
+
+        except Exception as e:
+            print(f"\nAn error occurred while solving: {e}")
+            
+class Secondorder:
+    @staticmethod
+    def homogeneous():
+        print("\nSolving a homogeneous second-order differential equation:")
+        print("Step 1: Recognize the equation is in the form ay'' + by' + cy = 0.")
+        print("Step 2: Form the characteristic equation ar^2 + br + c = 0.")
+        try:
+            print("Step 3: Input the coefficients a, b, and c.")
+            a = int(input("Input your 'a' value: "))
+            b = int(input("Input your 'b' value: "))
+            c = int(input("Input your 'c' value: "))
+        except ValueError:
+            print("Invalid input. Please enter numeric values for a, b, and c.")
+            return []
+        
+        try:
+            print("Step 4: Calculate the discriminant Δ = b^2 - 4ac.")
+            # Calculate the discriminant
+            discriminant = (b**2) - (4*a*c) # to determine how many roots and the final form of the solution
+            
+            # Check if a is zero
+            if a == 0:
+                print("Error: 'a' cannot be zero for a second-order equation.")
+                return []
+            
+            print("Step 5: Find the roots x1 and x2 of the characteristic equation.")
+            x1 = (-b + cmath.sqrt(discriminant)) / (2*a)
+            x2 = (-b - cmath.sqrt(discriminant)) / (2*a)
+            
+        except ZeroDivisionError:
+            print("Error: Division by zero. Check your coefficients.")
+            return []
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return []
+        
+        try:
+            x1 = str(x1).replace("+0j", "") # removes redundant value
+            x2 = str(x2).replace("+0j", "")
+        except Exception as e:
+            print(f"Error processing the solution: {e}")
+            return []
+            
+        solution_list = [x1, x2]
+        return solution_list
+
+    @staticmethod
+    def homogeneous_output():
+        print("\nDetermining the form of the general solution based on the roots.")
+        my_list = Secondorder.homogeneous()
+        if not my_list:
+            return
+        
+        x1 = my_list[0] # bringing in data to recycle code from homogeneous function
+        x2 = my_list[1]
+        
+        if x1 != x2 and "j" not in str(x1):
+            print("Step 6: If roots are real and distinct, the general solution is y = c1e^(x1*t) + c2e^(x2*t).")
+            print("The general form of a solution for this is:\ny=c1e^(at)+c2e^(bt)")
+            print(f"Your first solution is c1(e^(({x1})t))")
+            print(f"Your second solution is c2(e^(({x2})t))")
+            print(f"Using the superposition principle, the general solution to the provided differential equation is:\nc1(e^(({x1})t))+c2(e^(({x2})t))")
+        elif x1 == x2:
+            print("Step 7: If roots are real and equal, the general solution is y = c1e^(x1*t) + c2te^(x1*t).")
+            print("The general form of a solution for this is:\ny=c1e^(at)+c2te^(bt)")
+            print(f"Your first solution is c1(e^(({x1})t))")
+            print(f"Your second solution is c2t(e^(({x1})t))")
+            print(f"Using the superposition principle, the general solution to the provided differential equation is:\nc1(e^(({x1})t))+c2t(e^(({x1})t))")
+        elif "j" in str(x1):
+            print("Step 8: If roots are complex conjugates, the general solution involves sine and cosine functions.")
+            try:
+                complex_num = complex(x1)  # convert string back to complex number
+                real_part = complex_num.real
+                imag_part = complex_num.imag
+
+                print("\nThe general form of a solution for this is:\n(e^(at))[c1sin(bt)+c2cos(bt)]")
+                solution_string = f"(c1sin({imag_part}t)+c2cos({imag_part}t))"
+                if real_part != 0.0:
+                  solution_string = f"(e^({real_part}t))[" + solution_string + "]"
+
+                print(f"\nYour solution is:\n{solution_string}")
+            except ValueError:
+                print("Could not process complex solution due to formatting issues.")
+
+    @staticmethod
+    def nonhomogeneous(function):
+        print("Solving Nonhomogeneous Second-Order Differential Equation")
+        print("General Form: a·y'' + b·y' + c·y = f(x)\n")
+        
+        print("Step 1: Find the Complementary Solution (y_c)")
+        print("Solve the homogeneous equation: a·y'' + b·y' + c·y = 0")
+        print("This gives the solution to the associated homogeneous equation")
+        
+        x = sp.symbols('x')
+        y = sp.Function('y')(x)
+        
+        try:
+            print("\nStep 2: Input Coefficients of Homogeneous Equation")
+            print("These determine the characteristic equation's roots")
+            a = int(input("Enter coefficient 'a' (y'' term): "))
+            b = int(input("Enter coefficient 'b' (y' term): "))
+            c = int(input("Enter coefficient 'c' (y term): "))
+        except ValueError:
+            print("\nERROR: Invalid input. Coefficients must be numeric values.")
+            return
+    
+        try:
+            print("\nStep 3: Analyze Nonhomogeneous Term f(x)")
+            print(f"Your forcing function is: f(x) = {function}")
+            function = function.replace("e^", "exp")
+            f_x = sp.sympify(function)
+        except sp.SympifyError as e:
+            print(f"\nERROR: Invalid function format - {e}")
+            print("Use Python syntax (e.g., '3*exp(2*x)' instead of '3e^(2x)')")
+            return
+    
+        equation = sp.Eq(a*y.diff(x,x) + b*y.diff(x) + c*y, f_x)
+        
+        print("\nStep 4: Determine Particular Solution (y_p)")
+        
+        try:
+            solution = sp.dsolve(equation, y, hint='undetermined_coefficients')
+        except Exception:
+            solution = sp.dsolve(equation, y)
+    
+        rhs = solution.rhs
+        sol_str = f"y(x) = {sp.sstr(rhs)}"
+        
+        print("Combined Solution: y(x) = Complementary Solution (from homogeneous equation) + Particular Solution (specific to forcing function)")
+        print(sol_str)
+
+class LaplaceSolver:
+    @staticmethod
+    def solve_with_laplace():
+        print("\nSolving differential equations using Laplace transforms.")
+        print("Step 1: Take the Laplace transform of the entire differential equation.")
+        print("Step 2: Apply initial conditions to simplify the transformed equation.")
+        print("Step 3: Solve for Y(s), the Laplace transform of the solution y(t).")
+        print("Step 4: Take the inverse Laplace transform of Y(s) to find y(t).")
+        
+        # Define symbols and initial conditions
+        t, s = sp.symbols('t s')
+        y = sp.Function('y')(t)
+        Y = sp.Function('Y')(s)
+        
+        try:
+            # Input coefficients
+            print("\nStep 5: The equation to be solved should be in the form ay'' + by' + cy = f(x)\nInput coefficients and forcing function.")
+            a = int(input("Input coefficient 'a' for y'' (enter 0 if not present): "))
+            b = int(input("Input coefficient 'b' for y' (enter 0 if not present): "))
+            c = int(input("Input coefficient 'c' for y (enter 0 if not present): "))
+            
+            # Input forcing function f(t)
+            f_t = sp.sympify(input("Input f(t): "))
+            
+            # Input initial conditions
+            y0 = float(input("Input initial condition y(0): "))
+            yp0 = float(input("Input initial condition y'(0): "))
+        except (ValueError, sp.SympifyError) as e:
+            print(f"Input error: {e}")
+            return
+        
+        # Laplace transform of derivatives
+        L_y = sp.symbols('Y(s)')  # Placeholder for Laplace transform of y(t)
+        L_y_prime = s * L_y - y0  # Laplace transform of y'(t)
+        L_y_double_prime = s**2 * L_y - s * y0 - yp0  # Laplace transform of y''(t)
+
+        # Build Laplace-transformed equation
+        lhs = a * L_y_double_prime + b * L_y_prime + c * L_y
+        rhs = sp.laplace_transform(f_t, t, s, noconds=True)
+        
+        laplace_eq = sp.Eq(lhs, rhs)
+
+        print("\nLaplace-transformed equation:")
+        print(sp.pretty(laplace_eq))
+
+        try:
+            # Solve for Y(s) in the Laplace domain
+            Y_s = sp.solve(laplace_eq, L_y)[0]
+            
+            print("\nSolution in the Laplace domain (Y(s)):")
+            print(sp.pretty(Y_s))
+            
+            # Perform inverse Laplace transform to get y(t)
+            solution_t = sp.inverse_laplace_transform(Y_s, s, t)
+            
+            print("\nSolution in the time domain (y(t)):")
+            print(f"y(t) = {solution_t}")
+        
+        except Exception as e:
+            print(f"An error occurred while solving: {e}")
+
+def main():
+    try:
+        print("\nDifferential Equation Solver")
+        print("Step 1: Determine the order of the differential equation.")
+        order = (input("What order differential equation are you solving? (1, 2, ?) [Respond with a question mark if you don't understand the question!]:\n"))
+    except ValueError:
+        print("Invalid order input. Please enter a valid option.")
+        return
+    
+    if order == "1":
+        try:
+            print("\nStep 2: Choose a method to solve the first-order differential equation.")
+            firstorder_input = int(input("Solving Integrating Factor (1), Separation of Variables (2), Bernoulli (3), Laplace (4), or Exact (5)?:\n"))
+            if firstorder_input == 1:
+                Firstorder.integrating_factor()
+            elif firstorder_input == 2:
+                Firstorder.sep_of_var()
+            elif firstorder_input == 3:
+                Firstorder.Bernoulli()
+            elif firstorder_input == 4:
+                LaplaceSolver.solve_with_laplace()
+            elif firstorder_input == 5:
+                Firstorder.Exact()
+            else:
+                print("Invalid input. Please choose either 1, 2, 3 or 4.")
+        except ValueError:
+            print("Invalid input. Please enter a valid number for the method choice.")
+    
+    elif order == "2":
+        print("\nStep 2: For second-order equations, identify the form and choose a method.")
+        print("Second order equations to be solved will be in the form:\nay\" + by' + cy = f(x)\n")
+        function = input("Input f(x), or 'L' if you would like to solve with Laplace: ")
+        if function == "0":
+            Secondorder.homogeneous_output()
+        elif function == "L":
+            LaplaceSolver.solve_with_laplace()
+        else:
+            Secondorder.nonhomogeneous(function)
+    elif order == "?":
+        print("In the context of differential equations, the 'order' refers to the highest derivative of the unknown function that appears in the equation. For example, if the equation involves the first derivative of a function, like how fast something is changing, then the order is 1. If the equation involves the second derivative, such as how the rate of change itself is changing, then the order is 2. In simple terms, the order tells you how many times you are taking the derivative of the function. A first-order differential equation involves the first derivative, a second-order involves the second derivative, and so on. Knowing the order helps determine the methods and techniques used to solve the equation.")
+    elif order == "L":
+        LaplaceSolver.solve_with_laplace()
+    else:
+        print("Invalid input for the order of the differential equation.")
+    
+    return 0
+
+main()
